@@ -1,2 +1,2 @@
-# MCCPE
-Current Version: 0.0.1 C
+# Minecraft: Portbale Engine
+Current Version: any public build
