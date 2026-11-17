@@ -1,2 +1,2 @@
 # Minecraft: Portbale Engine
-Current Version: any public build
+Current Version: c0.10.0
