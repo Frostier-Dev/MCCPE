@@ -32,6 +32,7 @@ float cameraAngleX = 0.0f;
 
 std::string worldtype = "flat";
 uint8_t choaaa = 0;
+uint8_t maa = 1;
 
 bool ingame = true;
 int frame_count = 0;
@@ -94,6 +95,7 @@ void input(float& moveX, float& moveZ) {
         if (keys_down & KEY_START)  {
             if (cState == STATE::GAME) {
                 cState = STATE::IM;
+                maa = 4;
             }
         }
         if (keys_down & KEY_Y)      { crouch = !crouch; }
@@ -329,7 +331,6 @@ int main(int argc, char* argv[]) {
     timerStart(0, ClockDivider_1024, TIMER_FREQ_1024(1), timer_handler);
 
     bool readyaaa = true;
-    uint8_t maa = 1;
 
     while (ingame) {
         if (cState == STATE::IM) {
