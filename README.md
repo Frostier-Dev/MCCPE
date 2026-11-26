@@ -1,7 +1,7 @@
 # <img width="32" height="32" alt="icon" src="https://github.com/user-attachments/assets/357965f6-c8a4-4337-80c8-ae58510a81b9" /> Minecraft: Portable CXX Engine
 
 ```text
-Current Version: c0.10.0
+Current Version: c0.11.0
 Current Version Group: Classic 'c'
 ```
 
