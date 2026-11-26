@@ -1,4 +1,7 @@
 *.nds
 *.sav
+*.sh
+*.md
+*.txt
 build
 compile_commands.json
