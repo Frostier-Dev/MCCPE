@@ -16,15 +16,9 @@
 #include "textdf.h"
 
 #define OutputStateTF(b) ((b) ? "true" : "false")
+#define TEXT_COLOR_WHITE 15
+#define TEXT_SHADOW_GRAY 14
 
-ConsoleFont customFont = {
-    .gfx = textdfTiles,
-    .pal = NULL,
-    .numColors = 0,
-    .bpp = 4,
-    .asciiOffset = 0,
-    .numChars = 256    
-};
 bool crouch = false;
 
 int lastTouchX = 0;
@@ -141,13 +135,95 @@ bool checkPlayerCollision(float x, float y, float z, float w, float h) {
     }
     return false;
 }
+u8 charStartX[256];
+u8 charWidths[256];
+
+void initTextPalette() {
+    BG_PALETTE[TEXT_COLOR_WHITE] = RGB15(31, 31, 31);
+    // #7A7A7A
+    BG_PALETTE[TEXT_SHADOW_GRAY] = RGB8(0x7A, 0x7A, 0x7A);
+}
+
+void initProportionalFont() {
+    const u8* tiles = (const u8*)textdfTiles;
+
+    for (int c = 0; c < 256; c++) {
+        int minCol = 8;
+        int maxCol = 0;
+        const u8* glyph = tiles + (c * 32);
+
+        for (int py = 0; py < 8; py++) {
+            for (int px = 0; px < 8; px++) {
+                u8 byteVal = glyph[py * 4 + (px >> 1)];
+                u8 colorIdx = (px & 1) ? (byteVal >> 4) : (byteVal & 0x0F);
+
+                if (colorIdx != 0) {
+                    if (px < minCol) minCol = px;
+                    if ((px + 1) > maxCol) maxCol = px + 1;
+                }
+            }
+        }
+
+        if (maxCol == 0) {
+            charStartX[c] = 0;
+            charWidths[c] = 3;
+        } else {
+            charStartX[c] = minCol;
+            charWidths[c] = maxCol - minCol;
+        }
+    }
+}
+
+static inline void putPixelBmp4(u16* vram, int x, int y, u8 colorIndex) {
+    if (x < 0 || x >= 256 || y < 0 || y >= 192) return;
+    int offset = (y * 256 + x) >> 2;
+    int shift = (x & 3) << 2;
+    vram[offset] = (vram[offset] & ~(0x000F << shift)) | ((colorIndex & 0x0F) << shift);
+}
+
+void drawText(u16* vram, int startX, int startY, const char* text, u8 colorIndex) {
+    const u8* tiles = (const u8*)textdfTiles;
+    int curX = startX;
+    int curY = startY;
+
+    for (int i = 0; text[i] != '\0'; i++) {
+        unsigned char c = (unsigned char)text[i];
+
+        if (c == '\n') {
+            curX = startX;
+            curY += 10;
+            continue;
+        }
+
+        u8 sx = charStartX[c];
+        u8 w  = charWidths[c];
+        const u8* glyph = tiles + (c * 32);
+
+        for (int py = 0; py < 8; py++) {
+            for (int px = 0; px < w; px++) {
+                int tileX = sx + px;
+                u8 byteVal = glyph[py * 4 + (tileX >> 1)];
+                u8 pixelVal = (tileX & 1) ? (byteVal >> 4) : (byteVal & 0x0F);
+
+                if (pixelVal != 0) {
+                    putPixelBmp4(vram, curX + px, curY + py, colorIndex);
+                }
+            }
+        }
+        curX += w + 1;
+    }
+}
+void clearText(u16* vram) {
+    dmaFillHalfWords(0, vram, (256 * 192) >> 1);
+}
+
 int main(int argc, char* argv[]) {
     Renderer_Init();
     Renderer_LoadTexture(atlasBitmap);
     vramSetBankC(VRAM_C_SUB_BG);
     vramSetBankD(VRAM_D_MAIN_BG_0x06000000);
     videoSetModeSub(MODE_0_2D);
-    videoSetMode(MODE_0_3D | DISPLAY_BG1_ACTIVE | DISPLAY_BG2_ACTIVE);
+    videoSetMode(MODE_5_3D | DISPLAY_BG1_ACTIVE | DISPLAY_BG3_ACTIVE);
     
     int subBg = bgInitSub(0, BgType_Text8bpp, BgSize_T_256x256, 0, 1);
     dmaCopy(earthbgTiles, bgGetGfxPtr(subBg), earthbgTilesLen);
@@ -159,32 +235,25 @@ int main(int argc, char* argv[]) {
     dmaCopy(mainhudMap,   bgGetMapPtr(hudBg), mainhudMapLen);
     dmaCopy(mainhudPal,   BG_PALETTE,         mainhudPalLen);
 
-    PrintConsole hudConsole;
-    consoleInitEx(
-        &hudConsole,
-        2,
-        BgType_Text4bpp,
-        BgSize_T_256x256,
-        4,
-        2,
-        15,
-        0,
-        true,
-        false
-    );
-    consoleSetFont(&hudConsole, &customFont);
-    consoleSelect(&hudConsole);
-    dmaCopy(textdfPal, BG_PALETTE + 240, textdfPalLen);
-    bgSetPriority(2, 0);
+    int textBg = bgInit(3, BgType_Bmp4, BgSize_B4_256x256, 2, 0);
+    u16* textVram = bgGetGfxPtr(textBg);
+    initTextPalette();
+
+    bgSetPriority(3, 0);
     bgSetPriority(1, 1);
     bgSetPriority(0, 2);
 
-    printf("Minecraft: Nintendo DS Edition\n");
-    printf("c0.10.0\n");
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    printf("     Not Licensed, by Frostier71\n");
-    printf("     Selected Block: Cobblestone");
+    initProportionalFont();
+    clearText(textVram);
 
+    auto drawTextShadow = [&](int x, int y, const char* str) {
+        drawText(textVram, x + 1, y + 1, str, TEXT_SHADOW_GRAY);
+        drawText(textVram, x,     y,     str, TEXT_COLOR_WHITE);
+    };
+    //hi to someone that is reading this
+    drawTextShadow(2, 2, "Minecraft: Nintendo DS Edition\nc0.10.0");
+    drawTextShadow(30, 168, "Not Licensed, by Frostier71");
+    drawTextShadow(30, 178, "Selected Block: Cobblestone");
 
     nitroFSInit(NULL);
 
