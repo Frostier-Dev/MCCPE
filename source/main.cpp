@@ -2,7 +2,7 @@
 #include <time.h>
 #include <cmath>
 #include <cerrno>
-#include <cstring>
+#include <string>
 #include <nds.h>
 #include <maxmod9.h>
 #include <filesystem.h>
@@ -19,6 +19,9 @@
 #define TEXT_COLOR_WHITE 15
 #define TEXT_SHADOW_GRAY 14
 
+enum class STATE { IM, GAME };
+STATE cState = STATE::IM;
+STATE pState = STATE::IM;
 bool crouch = false;
 
 int lastTouchX = 0;
@@ -26,6 +29,9 @@ int lastTouchY = 0;
 bool wasTouched = false;
 float cameraAngleY = 0.0f;
 float cameraAngleX = 0.0f;
+
+std::string worldtype = "flat";
+uint8_t choaaa = 0;
 
 bool ingame = true;
 int frame_count = 0;
@@ -43,73 +49,108 @@ void input(float& moveX, float& moveZ) {
     uint16_t keys = keysHeld();
     uint16_t keys_down = keysDown();
 
-    if (keys & KEY_TOUCH) {
-        touchPosition touch;
-        touchRead(&touch);
-        if (!wasTouched) {
-            lastTouchX = touch.px;
-            lastTouchY = touch.py;
-            wasTouched = true;
+    if (cState == STATE::GAME) {
+        if (keys & KEY_TOUCH) {
+            touchPosition touch;
+            touchRead(&touch);
+            if (!wasTouched) {
+                lastTouchX = touch.px;
+                lastTouchY = touch.py;
+                wasTouched = true;
+            } else {
+                int deltaX = touch.px - lastTouchX;
+                int deltaY = touch.py - lastTouchY;
+                cameraAngleY -= deltaY * 0.5f;
+                cameraAngleX -= deltaX * 0.5f;
+                lastTouchX = touch.px;
+                lastTouchY = touch.py;
+            }
         } else {
-            int deltaX = touch.px - lastTouchX;
-            int deltaY = touch.py - lastTouchY;
-            cameraAngleY -= deltaY * 0.5f;
-            cameraAngleX -= deltaX * 0.5f;
-            lastTouchX = touch.px;
-            lastTouchY = touch.py;
+            wasTouched = false;
         }
-    } else {
-        wasTouched = false;
-    }
-    if (cameraAngleY > 89.0f)  cameraAngleY = 89.0f;
-    if (cameraAngleY < -89.0f) cameraAngleY = -89.0f;
+        if (cameraAngleY > 89.0f)  cameraAngleY = 89.0f;
+        if (cameraAngleY < -89.0f) cameraAngleY = -89.0f;
 
-    float rad = cameraAngleX * (M_PI / 180.0f);
-    float vel = 0.08f;
+        float rad = cameraAngleX * (M_PI / 180.0f);
+        float vel = 0.08f;
 
-    if (keys & KEY_UP) {
-        moveX -= sinf(rad) * vel;
-        moveZ -= cosf(rad) * vel;
-    }
-    if (keys & KEY_DOWN) {
-        moveX += sinf(rad) * vel;
-        moveZ += cosf(rad) * vel;
-    }
-    if (keys & KEY_LEFT) {
-        moveX -= cosf(rad) * vel;
-        moveZ += sinf(rad) * vel;
-    }
-    if (keys & KEY_RIGHT) {
-        moveX += cosf(rad) * vel;
-        moveZ -= sinf(rad) * vel;
-    }
-
-    if (keys_down & KEY_START)  { ingame = false; }
-    if (keys_down & KEY_Y)      { crouch = !crouch; }
-    if ((keys_down & KEY_A) && local_player.is_on_ground) {
-        local_player.vy = 0.16f;
-        local_player.is_on_ground = false;
-    }
-    if (keys_down & KEY_L) {
-        RaycastHit target = raycastBlock(4.5f);
-        if (target.hit) {
-            setBlockAt(target.bx, target.by, target.bz, 0);
+        if (keys & KEY_UP) {
+            moveX -= sinf(rad) * vel;
+            moveZ -= cosf(rad) * vel;
         }
-    }
+        if (keys & KEY_DOWN) {
+            moveX += sinf(rad) * vel;
+            moveZ += cosf(rad) * vel;
+        }
+        if (keys & KEY_LEFT) {
+            moveX -= cosf(rad) * vel;
+            moveZ += sinf(rad) * vel;
+        }
+        if (keys & KEY_RIGHT) {
+            moveX += cosf(rad) * vel;
+            moveZ -= sinf(rad) * vel;
+        }
 
-    if (keys_down & KEY_R) {
-        RaycastHit target = raycastBlock(4.5f);
-        if (target.hit) {
-            float pHeight = crouch ? 1.5f : 1.8f;
-            float halfW = local_player.width * 0.5f;
+        if (keys_down & KEY_START)  {
+            if (cState == STATE::GAME) {
+                cState = STATE::IM;
+            }
+        }
+        if (keys_down & KEY_Y)      { crouch = !crouch; }
+        if ((keys_down & KEY_A) && local_player.is_on_ground) {
+            local_player.vy = 0.16f;
+            local_player.is_on_ground = false;
+        }
+        if (keys_down & KEY_L) {
+            RaycastHit target = raycastBlock(4.5f);
+            if (target.hit) {
+                setBlockAt(target.bx, target.by, target.bz, 0);
+            }
+        }
 
-            bool insidePlayer =
-                (local_player.x + halfW > target.prevX) && (local_player.x - halfW < target.prevX + 1.0f) &&
-                (local_player.y + pHeight > target.prevY) && (local_player.y < target.prevY + 1.0f) &&
-                (local_player.z + halfW > target.prevZ) && (local_player.z - halfW < target.prevZ + 1.0f);
+        if (keys_down & KEY_R) {
+            RaycastHit target = raycastBlock(4.5f);
+            if (target.hit) {
+                float pHeight = crouch ? 1.5f : 1.8f;
+                float halfW = local_player.width * 0.5f;
 
-            if (!insidePlayer) {
-                setBlockAt(target.prevX, target.prevY, target.prevZ, 3);
+                bool insidePlayer =
+                    (local_player.x + halfW > target.prevX) && (local_player.x - halfW < target.prevX + 1.0f) &&
+                    (local_player.y + pHeight > target.prevY) && (local_player.y < target.prevY + 1.0f) &&
+                    (local_player.z + halfW > target.prevZ) && (local_player.z - halfW < target.prevZ + 1.0f);
+
+                if (!insidePlayer) {
+                    setBlockAt(target.prevX, target.prevY, target.prevZ, 3);
+                }
+            }
+        }
+    } else if (cState == STATE::IM) {
+        if (choaaa == 0) {
+            if (keys_down & KEY_A) {
+                worldtype = "flat";
+                cState = STATE::GAME;
+            }
+            if (keys_down & KEY_DOWN) {
+                choaaa++;
+            }
+        }
+        if (choaaa == 1) {
+            if (keys_down & KEY_A) {
+                ;
+            }
+            if (keys_down & KEY_DOWN) {
+                choaaa++;
+            }
+            if (keys_down & KEY_UP) {
+                choaaa--;
+            }
+        }
+        if (choaaa == 2) {
+            if (keys_down & KEY_A) {
+                ingame = false;
+            }
+            if (keys_down & KEY_UP) {
+                choaaa--;
             }
         }
     }
@@ -226,10 +267,10 @@ int main(int argc, char* argv[]) {
     Renderer_LoadTexture(atlasBitmap);
     vramSetBankC(VRAM_C_SUB_BG);
     vramSetBankD(VRAM_D_MAIN_BG_0x06000000);
-    videoSetModeSub(MODE_0_2D);
+    videoSetModeSub(MODE_5_2D | DISPLAY_BG1_ACTIVE | DISPLAY_BG3_ACTIVE);
     videoSetMode(MODE_5_3D | DISPLAY_BG1_ACTIVE | DISPLAY_BG3_ACTIVE);
     
-    int subBg = bgInitSub(0, BgType_Text8bpp, BgSize_T_256x256, 0, 1);
+    int subBg = bgInitSub(1, BgType_Text8bpp, BgSize_T_256x256, 1, 0);
     dmaCopy(earthbgTiles, bgGetGfxPtr(subBg), earthbgTilesLen);
     dmaCopy(earthbgMap,   bgGetMapPtr(subBg), earthbgMapLen);
     dmaCopy(earthbgPal,   BG_PALETTE_SUB,     earthbgPalLen);
@@ -247,6 +288,15 @@ int main(int argc, char* argv[]) {
     bgSetPriority(1, 1);
     bgSetPriority(0, 2);
 
+    int subTextBg = bgInitSub(3, BgType_Bmp8, BgSize_B8_256x256, 4, 0);
+    u16* subTextVram = bgGetGfxPtr(subTextBg);
+
+    bgSetPriority(subTextBg, 0);
+    bgSetPriority(subBg, 1);
+
+    BG_PALETTE_SUB[TEXT_COLOR_WHITE] = RGB15(31, 31, 31);
+    BG_PALETTE_SUB[TEXT_SHADOW_GRAY] = RGB8(0x7A, 0x7A, 0x7A); 
+
     initProportionalFont();
     clearText(textVram);
 
@@ -255,9 +305,14 @@ int main(int argc, char* argv[]) {
         drawText(textVram, x,     y,     str, TEXT_COLOR_WHITE);
     };
     //hi to someone that is reading this
+    clearText(subTextVram);
+
+    auto drawSubTextShadow = [&](int x, int y, const char* str) {
+        drawText(subTextVram, x + 1, y + 1, str, TEXT_SHADOW_GRAY);
+        drawText(subTextVram, x,     y,     str, TEXT_COLOR_WHITE);
+    };
 
     RegisterSetup();
-    GenerateWorld();
 
     drawTextShadow(2, 2, "Minecraft: Nintendo DS Edition\nc0.11.0");
     drawTextShadow(2, 172, "Not Licensed, by Frostier71");
@@ -273,61 +328,92 @@ int main(int argc, char* argv[]) {
 
     timerStart(0, ClockDivider_1024, TIMER_FREQ_1024(1), timer_handler);
 
+    bool readyaaa = true;
+    uint8_t maa = 1;
+
     while (ingame) {
-        float moveX = 0.0f;
-        float moveZ = 0.0f;
-        input(moveX, moveZ);
-
-        float pHeight = crouch ? 1.5f : 1.8f;
-        float pWidth  = local_player.width;
-
-        local_player.x += moveX;
-        if (checkPlayerCollision(local_player.x, local_player.y, local_player.z, pWidth, pHeight)) {
-            local_player.x -= moveX;
-        }
-        local_player.z += moveZ;
-        if (checkPlayerCollision(local_player.x, local_player.y, local_player.z, pWidth, pHeight)) {
-            local_player.z -= moveZ;
-        }
-
-        local_player.vy -= 0.008f;
-        local_player.y += local_player.vy;
-
-        if (checkPlayerCollision(local_player.x, local_player.y, local_player.z, pWidth, pHeight)) {
-            if (local_player.vy < 0.0f) {
-                local_player.y = std::ceil(local_player.y);
-                local_player.is_on_ground = true;
-            } else if (local_player.vy > 0.0f) {
-                local_player.y -= local_player.vy;
+        if (cState == STATE::IM) {
+            float dummyX = 0.0f, dummyZ = 0.0f;
+            input(dummyX, dummyZ);
+            if(maa != choaaa) {
+                clearText(subTextVram);
+                if(choaaa == 0) {
+                    drawSubTextShadow(88, 87,  "> Flat World");
+                    drawSubTextShadow(88, 97,  "  Default World (BLOCKED)");
+                    drawSubTextShadow(88, 107, "  Exit Game");
+                }
+                else if(choaaa == 1) {
+                    drawSubTextShadow(88, 87,  "  Flat World");
+                    drawSubTextShadow(88, 97,  "> Default World (BLOCKED)");
+                    drawSubTextShadow(88, 107, "  Exit Game");
+                }
+                else if(choaaa == 2) {
+                    drawSubTextShadow(88, 87,  "  Flat World");
+                    drawSubTextShadow(88, 97,  "  Default World (BLOCKED)");
+                    drawSubTextShadow(88, 107, "> Exit Game");
+                }
+                maa = choaaa;
             }
-            local_player.vy = 0.0f;
-        } else {
-            local_player.is_on_ground = false;
+        } else if (cState == STATE::GAME) {
+            clearText(subTextVram);
+            if (readyaaa) {
+                GenerateWorld(worldtype);
+                clearText(subTextVram);
+                readyaaa = false;
+            }
+            float moveX = 0.0f;
+            float moveZ = 0.0f;
+            input(moveX, moveZ);
+
+            float pHeight = crouch ? 1.5f : 1.8f;
+            float pWidth = local_player.width;
+
+            local_player.x += moveX;
+            if (checkPlayerCollision(local_player.x, local_player.y, local_player.z, pWidth, pHeight)) {
+                local_player.x -= moveX;
+            }
+            local_player.z += moveZ;
+            if (checkPlayerCollision(local_player.x, local_player.y, local_player.z, pWidth, pHeight)) {
+                local_player.z -= moveZ;
+            }
+
+            local_player.vy -= 0.008f;
+            local_player.y += local_player.vy;
+
+            if (checkPlayerCollision(local_player.x, local_player.y, local_player.z, pWidth, pHeight)) {
+                if (local_player.vy < 0.0f) {
+                    local_player.y = std::ceil(local_player.y);
+                    local_player.is_on_ground = true;
+                } else if (local_player.vy > 0.0f) {
+                    local_player.y -= local_player.vy;
+                }
+                local_player.vy = 0.0f;
+            } else {
+                local_player.is_on_ground = false;
+            }
+
+            float eyeHeight = pHeight * 0.85f;
+            glMatrixMode(GL_MODELVIEW);
+            glLoadIdentity();
+            glRotatef(-cameraAngleY, 1.0f, 0.0f, 0.0f);
+            glRotatef(-cameraAngleX, 0.0f, 1.0f, 0.0f);
+            glTranslatef32(
+                floattof32(-local_player.x),
+                floattof32(-(local_player.y + eyeHeight)),
+                floattof32(-local_player.z)
+            );
+
+            if (local_player.y <= -32.0f) {
+                local_player.y = 32.0f;
+                local_player.vy = 0.0f;
+                local_player.x = 0.0f;
+                local_player.z = 0.0f;
+            }
+
+            Renderer_RenderWorld();
         }
-
-        float eyeHeight = pHeight * 0.85f;
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glRotatef(-cameraAngleY, 1.0f, 0.0f, 0.0f);
-        glRotatef(-cameraAngleX, 0.0f, 1.0f, 0.0f);
-        glTranslatef32(
-            floattof32(-local_player.x),
-            floattof32(-(local_player.y + eyeHeight)),
-            floattof32(-local_player.z)
-        );
-
-        if(local_player.y <= -32.0f) {
-            local_player.y = 32.0f;
-            local_player.vy = 0.0f;
-            local_player.x = 0.0f;
-            local_player.z = 0.0f;
-        }
-
-        Renderer_RenderWorld();
-
-        frame_count++;
+        pState = cState;
         swiWaitForVBlank();
     }
-
     return 0;
 }

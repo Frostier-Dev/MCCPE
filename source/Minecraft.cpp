@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <array>
 #include <cmath>
+#include <string>
 #include <time.h>
 #include <nds.h>
 #include "Minecraft.hpp"
@@ -77,7 +78,7 @@ void RegisterSetup(void) {
     textureregister[3] = { true, 2, 0, 0, 0 };
 }
 
-void GenerateWorld(void) {
+void GenerateWorld(std::string type) {
     static uint32_t seedg = 0;
     if (seedg == 0) {
         seedg = (uint32_t)time(NULL) ^ (uint32_t)TIMER0_DATA;
@@ -86,42 +87,43 @@ void GenerateWorld(void) {
     const siv::PerlinNoise::seed_type seed = xorshift32(&seedg);
     static siv::PerlinNoise perlin;
     perlin.reseed(seed);
+    if(type == "flat") {
+        for (int gx = 0; gx < LOADED_X; gx++) {
+            for (int gz = 0; gz < LOADED_Z; gz++) {
+               Chunk& c = loadedChunks[gx][gz];
+               memset(c.blocks, 0, sizeof(c.blocks));
+               memset(c.light, 0xF0, sizeof(c.light));
 
-    for (int gx = 0; gx < LOADED_X; gx++) {
-        for (int gz = 0; gz < LOADED_Z; gz++) {
-            Chunk& c = loadedChunks[gx][gz];
-            memset(c.blocks, 0, sizeof(c.blocks));
-            memset(c.light, 0xF0, sizeof(c.light));
-
-            c.chunkX = gx - 1;
-            c.chunkZ = gz - 1;
-            c.loaded = true;
-            c.active = true;
-            c.modified = false;
-            c.dirty = true;
-            c.displayListId = -1;
+                c.chunkX = gx - 1;
+                c.chunkZ = gz - 1;
+                c.loaded = true;
+                c.active = true;
+                c.modified = false;
+                c.dirty = true;
+                c.displayListId = -1;
             
-            for (int y = 0; y <= 16; y++) {
-                uint8_t blockId = 0;
-                if (y < 14) blockId = 3;
-                else if (y < 16) blockId = 2;
-                else blockId = 1;
+                for (int y = 0; y <= 16; y++) {
+                    uint8_t blockId = 0;
+                    if (y < 14) blockId = 3;
+                    else if (y < 16) blockId = 2;
+                    else blockId = 1;
 
-                for (int z = 0; z < CHUNK_WIDTH; z++) {
-                    for (int x = 0; x < CHUNK_WIDTH; x++) {
-                        c.blocks[y][z][x] = blockId;
+                    for (int z = 0; z < CHUNK_WIDTH; z++) {
+                        for (int x = 0; x < CHUNK_WIDTH; x++) {
+                            c.blocks[y][z][x] = blockId;
+                        }
                     }
                 }
             }
         }
+        local_player.x = 8.0f;
+        local_player.y = 18.0f;
+        local_player.z = 8.0f;
+        local_player.vx = 0.0f;
+        local_player.vy = 0.0f;
+        local_player.vz = 0.0f;
+        local_player.is_on_ground = false;
     }
-    local_player.x = 8.0f;
-    local_player.y = 18.0f;
-    local_player.z = 8.0f;
-    local_player.vx = 0.0f;
-    local_player.vy = 0.0f;
-    local_player.vz = 0.0f;
-    local_player.is_on_ground = false;
 }
 uint8_t getBlockIDAt(float wx, float wy, float wz) {
     int bx = (int)std::floor(wx);

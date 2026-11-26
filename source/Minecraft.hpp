@@ -1,6 +1,7 @@
 #ifndef MINECRAFT_HPP
 #define MINECRAFT_HPP
 #include <stdint.h>
+#include <string>
 #define CHUNK_WIDTH 16
 #define CHUNK_HEIGHT 32
 struct Block {
@@ -62,7 +63,7 @@ extern Block blockregister[4];
 extern bool crouch;
 
 void RegisterSetup(void);
-void GenerateWorld(void);
+void GenerateWorld(std::string type);
 bool isSolidAt(float x, float y, float z);
 Block& getBlockAt(int wx, int wy, int wz);
 void rebuildChunkList(Chunk& chunk);
