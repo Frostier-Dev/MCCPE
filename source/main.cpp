@@ -174,11 +174,15 @@ void initProportionalFont() {
     }
 }
 
-static inline void putPixelBmp4(u16* vram, int x, int y, u8 colorIndex) {
+static inline void putPixelBmp8(u16* vram, int x, int y, u8 colorIndex) {
     if (x < 0 || x >= 256 || y < 0 || y >= 192) return;
-    int offset = (y * 256 + x) >> 2;
-    int shift = (x & 3) << 2;
-    vram[offset] = (vram[offset] & ~(0x000F << shift)) | ((colorIndex & 0x0F) << shift);
+    int offset = (y * 256 + x) >> 1;
+    u16 data = vram[offset];
+    if (x & 1) {
+        vram[offset] = (data & 0x00FF) | (colorIndex << 8);
+    } else {
+        vram[offset] = (data & 0xFF00) | colorIndex;
+    }
 }
 
 void drawText(u16* vram, int startX, int startY, const char* text, u8 colorIndex) {
@@ -206,15 +210,15 @@ void drawText(u16* vram, int startX, int startY, const char* text, u8 colorIndex
                 u8 pixelVal = (tileX & 1) ? (byteVal >> 4) : (byteVal & 0x0F);
 
                 if (pixelVal != 0) {
-                    putPixelBmp4(vram, curX + px, curY + py, colorIndex);
+                    putPixelBmp8(vram, curX + px, curY + py, colorIndex);
                 }
             }
         }
-        curX += w + 1;
+        curX += w + 2;
     }
 }
 void clearText(u16* vram) {
-    dmaFillHalfWords(0, vram, (256 * 192) >> 1);
+    dmaFillHalfWords(0, vram, 256 * 192);
 }
 
 int main(int argc, char* argv[]) {
@@ -235,7 +239,7 @@ int main(int argc, char* argv[]) {
     dmaCopy(mainhudMap,   bgGetMapPtr(hudBg), mainhudMapLen);
     dmaCopy(mainhudPal,   BG_PALETTE,         mainhudPalLen);
 
-    int textBg = bgInit(3, BgType_Bmp4, BgSize_B4_256x256, 2, 0);
+    int textBg = bgInit(3, BgType_Bmp8, BgSize_B8_256x256, 4, 0);
     u16* textVram = bgGetGfxPtr(textBg);
     initTextPalette();
 
@@ -251,20 +255,21 @@ int main(int argc, char* argv[]) {
         drawText(textVram, x,     y,     str, TEXT_COLOR_WHITE);
     };
     //hi to someone that is reading this
-    drawTextShadow(2, 2, "Minecraft: Nintendo DS Edition\nc0.10.0");
-    drawTextShadow(30, 168, "Not Licensed, by Frostier71");
-    drawTextShadow(30, 178, "Selected Block: Cobblestone");
 
-    nitroFSInit(NULL);
+    RegisterSetup();
+    GenerateWorld();
+
+    drawTextShadow(2, 2, "Minecraft: Nintendo DS Edition\nc0.11.0");
+    drawTextShadow(2, 172, "Not Licensed, by Frostier71");
+    drawTextShadow(2, 182, "Selected Block: Cobblestone");
+
+    (void)nitroFSInit(NULL);
 
     soundEnable();
 
     mmInitDefault("nitro:/soundbank.bin");
     mmLoad(MOD_MINECRAFT);
     mmStart(MOD_MINECRAFT, MM_PLAY_LOOP);
-
-    RegisterSetup();
-    GenerateWorld();
 
     timerStart(0, ClockDivider_1024, TIMER_FREQ_1024(1), timer_handler);
 
@@ -310,6 +315,13 @@ int main(int argc, char* argv[]) {
             floattof32(-(local_player.y + eyeHeight)),
             floattof32(-local_player.z)
         );
+
+        if(local_player.y <= -32.0f) {
+            local_player.y = 32.0f;
+            local_player.vy = 0.0f;
+            local_player.x = 0.0f;
+            local_player.z = 0.0f;
+        }
 
         Renderer_RenderWorld();
 
