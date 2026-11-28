@@ -1,12 +1,12 @@
-# c0.11.0 Changelog
+# c0.12.0 Changelog
 
 ***Additions***: 
-- Complete Game Manual and README;
-- Complete 'About' section.
+- Sound Effects for putting and breaking blocks;
+- Initial simple menu.
 
 ***Changes***:
-- Flexible Text System;
-- Audio bit better;
-- Safe-Zone system.
+- Corrected renderer;
+- Frustum Culling implemented;
+- Structure reajusted.
 
-*Frostier71, 26/11/2026, 02:40*
+*Frostier71, 28/11/2026, 04:39*
