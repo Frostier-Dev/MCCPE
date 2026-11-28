@@ -2,13 +2,54 @@
 // Adaption of Frustum.java from: Decompiled 'c0.0.11a.jar'
 
 #include <nds.h>
+#include <cmath>
 #include "Frustum.hpp"
+#include "../Minecraft.hpp"
+
+extern float cameraAngleX;
+extern float cameraAngleY;
 
 Frustum Frustum::instance;
 
 Frustum& Frustum::getFrustum() {
     instance.calculateFrustum();
     return instance;
+}
+
+CamFrustum buildCamFrustum() {
+    CamFrustum f;
+    const float pHeight = crouch ? 1.5f : 1.8f;
+    f.ex = local_player.x;
+    f.ey = local_player.y + pHeight * 0.85f;
+    f.ez = local_player.z;
+
+    const float radX = cameraAngleX * (M_PI / 180.0f);
+    const float radY = cameraAngleY * (M_PI / 180.0f);
+    const float sx = sinf(radX), cx = cosf(radX);
+    const float sy = sinf(radY), cy = cosf(radY);
+
+    f.fx = -sx * cy;  f.fy = sy;  f.fz = -cx * cy;
+    f.rx = cx;        f.rz = -sx;
+    f.ux = sx * f.fy;
+    f.uy = -sx * f.fx - cx * f.fz;
+    f.uz = cx * f.fy;
+    return f;
+}
+
+bool sphereInView(const CamFrustum& f, float cx, float cy, float cz, float r) {
+    const float vx = cx - f.ex, vy = cy - f.ey, vz = cz - f.ez;
+
+    const float z = vx * f.fx + vy * f.fy + vz * f.fz;
+    if (z < -r || z > 80.0f + r) return false;
+
+    const float x = vx * f.rx + vz * f.rz;
+    const float y = vx * f.ux + vy * f.uy + vz * f.uz;
+
+    const float tanV = 0.7002f; 
+    const float tanH = tanV * (4.0f / 3.0f);
+    if (fabsf(x) > z * tanH + r * 1.4f) return false;
+    if (fabsf(y) > z * tanV + r * 1.25f) return false;
+    return true;
 }
 
 void Frustum::calculateFrustum() {
@@ -81,16 +122,11 @@ bool Frustum::cubeInFrustum(float x1, float y1, float z1, float x2, float y2, fl
         const float c = m_Frustum[i][C];
         const float d = m_Frustum[i][D];
 
-        if (a * x1 + b * y1 + c * z1 + d <= 0.0f &&
-            a * x2 + b * y1 + c * z1 + d <= 0.0f &&
-            a * x1 + b * y2 + c * z1 + d <= 0.0f &&
-            a * x2 + b * y2 + c * z1 + d <= 0.0f &&
-            a * x1 + b * y1 + c * z2 + d <= 0.0f &&
-            a * x2 + b * y1 + c * z2 + d <= 0.0f &&
-            a * x1 + b * y2 + c * z2 + d <= 0.0f &&
-            a * x2 + b * y2 + c * z2 + d <= 0.0f) {
-            return false;
-        }
+        const float px = (a > 0.0f) ? x2 : x1;
+        const float py = (b > 0.0f) ? y2 : y1;
+        const float pz = (c > 0.0f) ? z2 : z1;
+
+        if (a * px + b * py + c * pz + d <= 0.0f) return false;
     }
     return true;
 }

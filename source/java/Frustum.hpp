@@ -1,6 +1,16 @@
 #ifndef FRUSTUM_HPP
 #define FRUSTUM_HPP
 
+struct CamFrustum {
+    float ex, ey, ez;   // eye
+    float fx, fy, fz;   // forward
+    float rx, rz;       // right (ry = 0)
+    float ux, uy, uz;   // up
+};
+
+CamFrustum buildCamFrustum();
+bool sphereInView(const CamFrustum& f, float cx, float cy, float cz, float r);
+
 class Frustum {
 public:
     float m_Frustum[6][4];

@@ -10,6 +10,8 @@
 #include "soundbank.h"
 #include "Minecraft.hpp"
 #include "Renderer.hpp"
+#include "SoundSYS.hpp"
+
 #include "atlas.h"
 #include "earthbg.h"
 #include "mainhud.h"
@@ -23,12 +25,14 @@ enum class STATE { IM, GAME };
 STATE cState = STATE::IM;
 STATE pState = STATE::IM;
 bool crouch = false;
+extern int gfxPolys, gfxVerts;
 
 int lastTouchX = 0;
 int lastTouchY = 0;
 bool wasTouched = false;
 float cameraAngleY = 0.0f;
 float cameraAngleX = 0.0f;
+uint8_t bs = 3;
 
 std::string worldtype = "flat";
 uint8_t choaaa = 0;
@@ -106,7 +110,9 @@ void input(float& moveX, float& moveZ) {
         if (keys_down & KEY_L) {
             RaycastHit target = raycastBlock(4.5f);
             if (target.hit) {
+                const uint8_t id = getBlockIDAt(target.bx + 0.5f, target.by + 0.5f, target.bz + 0.5f);
                 setBlockAt(target.bx, target.by, target.bz, 0);
+                SoundSYS::PlayBlock(id);
             }
         }
 
@@ -123,6 +129,7 @@ void input(float& moveX, float& moveZ) {
 
                 if (!insidePlayer) {
                     setBlockAt(target.prevX, target.prevY, target.prevZ, 3);
+                    SoundSYS::PlayBlock(bs);
                 }
             }
         }
@@ -316,7 +323,7 @@ int main(int argc, char* argv[]) {
 
     RegisterSetup();
 
-    drawTextShadow(2, 2, "Minecraft: Nintendo DS Edition\nc0.11.0");
+    drawTextShadow(2, 2, "Minecraft: Nintendo DS Edition\nc0.12.0");
     drawTextShadow(2, 172, "Not Licensed, by Frostier71");
     drawTextShadow(2, 182, "Selected Block: Cobblestone");
 

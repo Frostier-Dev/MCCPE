@@ -61,6 +61,7 @@ extern Player local_player;
 extern Texture textureregister[4];
 extern Block blockregister[4];
 extern bool crouch;
+uint8_t getBlockIDAt(float wx, float wy, float wz);
 
 void RegisterSetup(void);
 void GenerateWorld(std::string type);
