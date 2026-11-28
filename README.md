@@ -1,7 +1,7 @@
 # <img width="32" height="32" alt="icon" src="https://github.com/user-attachments/assets/357965f6-c8a4-4337-80c8-ae58510a81b9" /> Minecraft: Portable CXX Engine
 
 ```text
-Current Version: c0.11.0
+Current Version: c0.12.0
 Current Version Group: Classic 'c'
 ```
 
@@ -14,6 +14,8 @@ Current Version Group: Classic 'c'
 - **Flat World:** Clean and optimized flat terrain ready for exploration and building.
 - **4 Distinct Block Types:** Includes 4 different types of blocks to build with.
 - **Building System:** Functional block placing and breaking mechanics designed for handheld controls.
+- **Music track and Sound Effects:** Contains now functional sounds!
+- **Simple initial menu:** To select beetwen Flat World, Default World (Blocked for now) and Exit the game.
 
 ---
 
@@ -29,12 +31,13 @@ Current Version Group: Classic 'c'
 > **Tip:** Use the default bootstrap.
 
 **Controls**:
-- **A Button:** Jump;
+- **A Button:** Jump; Select an option on a menu;
 - **Y Button:** Crouch (toggle);
 - **L Trigger:** Break blocks;
 - **R Trigger:** Place blocks;
-- **D-Pad:** Move the player around the world;
-- **Touch Screen:** Control the player's camera.
+- **D-Pad:** Move the player around the world; Move trought the menu;
+- **Touch Screen:** Control the player's camera;
+- **Start**: Pause the game and go back to the menu.
 
 ---
 
